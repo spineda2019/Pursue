@@ -16,7 +16,12 @@
  *  with this program. If not, see <https://www.gnu.org/licenses/>
  */
 
-use argparse::{ArgumentParser, StoreTrue};
+mod logger;
+
+use std::path::PathBuf;
+
+use argparse::{ArgumentParser, Store, StoreTrue};
+use logger::Logger;
 
 const VERSION: &str = "0.0.1";
 
@@ -24,9 +29,10 @@ fn print_version_info() {
     println!("Trace version {}", VERSION);
 }
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let mut logging: bool = false;
     let mut print_version: bool = false;
+    let mut directory: String = String::new();
 
     {
         let mut argument_parser: ArgumentParser = ArgumentParser::new();
@@ -44,13 +50,24 @@ fn main() {
             "Print version and license information",
         );
 
+        argument_parser.refer(&mut directory).add_option(
+            &["-d", "--directory"],
+            Store,
+            "Directory you would like to profile",
+        );
+
         argument_parser.parse_args_or_exit();
     }
 
     if print_version {
         print_version_info();
-        return;
+        return Ok(());
     }
 
-    println!("Logging: {}", logging);
+    let current_dir: PathBuf = std::env::current_dir()?;
+
+    let logger = Logger::new(&directory, &current_dir, logging);
+    logger.log()?;
+
+    Ok(())
 }

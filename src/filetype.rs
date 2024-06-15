@@ -4,4 +4,8 @@ pub enum FileType {
     Python,
     Rust,
     Zig,
+    Javascript,
+    Typescript,
+    Makefile,
+    Unknown,
 }

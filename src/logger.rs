@@ -42,14 +42,20 @@ impl<'a> Logger<'a> {
         }
     }
 
-    fn recursively_log(entry: &'a DirEntry) -> Result<(), std::io::Error> {
+    fn parse_file(&self, file: &'a Path) {
+        if self.verbose {
+            println!("Parsing File: {:?}", file);
+        }
+    }
+
+    fn recursively_log(&self, entry: &'a DirEntry) -> Result<(), std::io::Error> {
         if entry.path().is_dir() {
             for sub_entry in entry.path().read_dir()? {
                 let sub_entry = sub_entry?;
-                Logger::recursively_log(&sub_entry)?;
+                self.recursively_log(&sub_entry)?;
             }
         } else {
-            println!("File: {:?}", entry.path());
+            self.parse_file(&entry.path());
         }
 
         Ok(())
@@ -62,7 +68,7 @@ impl<'a> Logger<'a> {
         if self.root_directory.is_dir() {
             for entry in self.root_directory.read_dir()? {
                 let entry = entry?;
-                Logger::recursively_log(&entry)?;
+                self.recursively_log(&entry)?;
             }
         } else {
             println!("File: {:?}", self.root_directory);

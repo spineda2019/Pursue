@@ -27,18 +27,10 @@ pub struct Logger<'a> {
 }
 
 impl<'a> Logger<'a> {
-    pub fn new(directory: &'a str, current_dir: &'a PathBuf, verbose_printing: bool) -> Self {
-        let path = Path::new(directory);
-        if path.exists() {
-            Self {
-                root_directory: path,
-                verbose: verbose_printing,
-            }
-        } else {
-            Self {
-                root_directory: current_dir,
-                verbose: verbose_printing,
-            }
+    pub fn new(directory: &'a PathBuf, verbose_printing: bool) -> Self {
+        Self {
+            root_directory: directory,
+            verbose: verbose_printing,
         }
     }
 

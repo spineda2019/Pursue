@@ -18,7 +18,7 @@
 
 mod logger;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use argparse::{ArgumentParser, Store, StoreTrue};
 use logger::Logger;
@@ -64,9 +64,15 @@ fn main() -> Result<(), std::io::Error> {
         return Ok(());
     }
 
-    let current_dir: PathBuf = std::env::current_dir()?;
+    let designated_dir: PathBuf = match directory.is_empty() {
+        false => match Path::new(&directory).exists() {
+            true => Path::canonicalize(Path::new(&directory))?,
+            false => std::env::current_dir()?,
+        },
+        true => std::env::current_dir()?,
+    };
 
-    let logger = Logger::new(&directory, &current_dir, logging);
+    let logger = Logger::new(&designated_dir, logging);
     logger.log()?;
 
     Ok(())

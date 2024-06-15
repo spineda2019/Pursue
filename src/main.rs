@@ -16,6 +16,7 @@
  *  with this program. If not, see <https://www.gnu.org/licenses/>
  */
 
+mod filetype;
 mod logger;
 
 use std::path::{Path, PathBuf};

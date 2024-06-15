@@ -21,6 +21,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::filetype::FileType;
+
 pub struct Logger<'a> {
     root_directory: &'a Path,
     verbose: bool,
@@ -34,10 +36,37 @@ impl<'a> Logger<'a> {
         }
     }
 
+    fn classify_file(&self, file: &'a Path) -> FileType {
+        return match file.extension() {
+            Some(extension) => match extension.to_str() {
+                Some("c") => FileType::C,
+                Some("cpp") => FileType::Cpp,
+                Some("py") => FileType::Python,
+                Some("zig") => FileType::Zig,
+                Some("rs") => FileType::Rust,
+                Some("js") => FileType::Javascript,
+                Some("ts") => FileType::Typescript,
+                _ => FileType::Unknown,
+            },
+            None => match file.to_str() {
+                Some("Makefile") => FileType::Makefile,
+                None => return FileType::Unknown,
+                _ => FileType::Unknown,
+            },
+        };
+    }
+
     fn parse_file(&self, file: &'a Path) {
         if self.verbose {
             println!("Parsing File: {:?}", file);
         }
+
+        let filetype = self.classify_file(file);
+        if let FileType::Unknown = filetype {
+            return;
+        }
+
+        todo!()
     }
 
     fn recursively_log(&self, entry: &'a DirEntry) -> Result<(), std::io::Error> {
@@ -64,6 +93,7 @@ impl<'a> Logger<'a> {
             }
         } else {
             println!("File: {:?}", self.root_directory);
+            self.parse_file(self.root_directory);
         }
 
         Ok(())

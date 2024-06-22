@@ -51,29 +51,104 @@ impl<'a> Logger<'a> {
         }
     }
 
-    fn classify_file(file: &Path) -> Option<FileType> {
+    fn classify_file(file: &Path) -> Option<FileType<'static>> {
         return match file.extension() {
             Some(extension) => match extension.to_str() {
-                Some("c") => Some(FileType::C),
-                Some("cpp") => Some(FileType::Cpp),
-                Some("py") => Some(FileType::Python),
-                Some("zig") => Some(FileType::Zig),
-                Some("rs") => Some(FileType::Rust),
-                Some("js") => Some(FileType::Javascript),
-                Some("ts") => Some(FileType::Typescript),
+                Some("c") => Some(FileType::C {
+                    inline_comment_fomrat: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
+                Some("cpp") => Some(FileType::Cpp {
+                    inline_comment_fomrat: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
+                Some("py") => Some(FileType::Python {
+                    inline_comment_fomrat: Some("#"),
+                    multiline_comment_start_format: None,
+                    multiline_comment_end_format: None,
+                }),
+                Some("zig") => Some(FileType::Zig {
+                    inline_comment_fomrat: Some("//"),
+                    multiline_comment_start_format: None,
+                    multiline_comment_end_format: None,
+                }),
+                Some("rs") => Some(FileType::Rust {
+                    inline_comment_fomrat: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
+                Some("js") => Some(FileType::Javascript {
+                    inline_comment_fomrat: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
+                Some("ts") => Some(FileType::Typescript {
+                    inline_comment_fomrat: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
                 _ => None,
             },
             None => match file.to_str() {
-                Some("Makefile") => Some(FileType::Makefile),
+                Some("Makefile") => Some(FileType::Makefile {
+                    inline_comment_fomrat: Some("#"),
+                    multiline_comment_start_format: None,
+                    multiline_comment_end_format: None,
+                }),
                 None => None,
                 _ => None,
             },
         };
     }
 
-    fn process_line(line: &str) {
+    fn process_line(line: &str, filetype: &FileType) {
         if line.is_empty() {
             return;
+        }
+
+        match filetype {
+            FileType::C {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
+            FileType::Cpp {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
+            FileType::Python {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
+            FileType::Rust {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
+            FileType::Zig {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
+            FileType::Javascript {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
+            FileType::Typescript {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
+            FileType::Makefile {
+                inline_comment_fomrat,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => todo!(),
         }
     }
 

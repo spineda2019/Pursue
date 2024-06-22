@@ -18,7 +18,7 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    fs::{DirEntry, File},
+    fs::{File, Metadata},
     io::{BufRead, BufReader, ErrorKind},
     num::NonZero,
     path::{Path, PathBuf},
@@ -26,7 +26,7 @@ use std::{
     thread,
 };
 
-use crate::filetype::FileType;
+use crate::{filebundle::FileBundle, filetype::FileType};
 
 pub struct Logger<'a> {
     root_directory: &'a Path,
@@ -51,22 +51,22 @@ impl<'a> Logger<'a> {
         }
     }
 
-    fn classify_file(file: &Path) -> FileType {
+    fn classify_file(file: &Path) -> Option<FileType> {
         return match file.extension() {
             Some(extension) => match extension.to_str() {
-                Some("c") => FileType::C,
-                Some("cpp") => FileType::Cpp,
-                Some("py") => FileType::Python,
-                Some("zig") => FileType::Zig,
-                Some("rs") => FileType::Rust,
-                Some("js") => FileType::Javascript,
-                Some("ts") => FileType::Typescript,
-                _ => FileType::Unknown,
+                Some("c") => Some(FileType::C),
+                Some("cpp") => Some(FileType::Cpp),
+                Some("py") => Some(FileType::Python),
+                Some("zig") => Some(FileType::Zig),
+                Some("rs") => Some(FileType::Rust),
+                Some("js") => Some(FileType::Javascript),
+                Some("ts") => Some(FileType::Typescript),
+                _ => None,
             },
             None => match file.to_str() {
-                Some("Makefile") => FileType::Makefile,
-                None => return FileType::Unknown,
-                _ => FileType::Unknown,
+                Some("Makefile") => Some(FileType::Makefile),
+                None => None,
+                _ => None,
             },
         };
     }
@@ -77,26 +77,12 @@ impl<'a> Logger<'a> {
         }
     }
 
-    fn parse_file(file: &Path) {
-        let filetype = Self::classify_file(file);
-        if let FileType::Unknown = filetype {
-            return;
-        }
+    fn parse_file(file_bundle: FileBundle) {
+        let FileBundle(file, file_type) = file_bundle;
 
         println!("Parsing File: {:?}", file);
 
-        let file_handle: File = match File::open(file) {
-            Ok(file_handle) => file_handle,
-            Err(error) => {
-                eprintln!(
-                    "Error occurred while opening file {:?}\nError: {:?}",
-                    file, error
-                );
-                return;
-            }
-        };
-
-        let file_reader: BufReader<File> = BufReader::new(file_handle);
+        let file_reader: BufReader<File> = BufReader::new(file);
 
         for line in file_reader.lines() {
             Self::process_line(match &line {
@@ -106,20 +92,7 @@ impl<'a> Logger<'a> {
         }
     }
 
-    fn recursively_log(entry: DirEntry) -> Result<(), std::io::Error> {
-        if entry.path().is_dir() {
-            for sub_entry in entry.path().read_dir()? {
-                let sub_entry = sub_entry?;
-                Self::recursively_log(sub_entry)?;
-            }
-        } else {
-            Self::parse_file(&entry.path());
-        }
-
-        Ok(())
-    }
-
-    fn waiting_room(data: Arc<Mutex<VecDeque<DirEntry>>>, abort: Arc<Mutex<bool>>) {
+    fn waiting_room(data: Arc<Mutex<VecDeque<FileBundle>>>, abort: Arc<Mutex<bool>>) {
         loop {
             let entry = (*data).lock().unwrap().pop_front();
             match entry {
@@ -130,13 +103,56 @@ impl<'a> Logger<'a> {
                         continue;
                     }
                 }
-                Some(found_file) => Self::recursively_log(found_file),
+                Some(found_file) => Self::parse_file(found_file),
             };
         }
     }
 
+    fn populate_queue(
+        worker_queue: Arc<Mutex<VecDeque<FileBundle>>>,
+        root: &Path,
+    ) -> Result<(), std::io::Error> {
+        if root.is_dir() {
+            for entry in root.read_dir()? {
+                let entry = entry?;
+                if entry.path().is_dir() {
+                    Self::populate_queue(worker_queue.clone(), &entry.path());
+                } else {
+                    let file_type: FileType = match Self::classify_file(&entry.path()) {
+                        Some(x) => x,
+                        None => continue,
+                    };
+
+                    let file: File = match File::open(entry.path()) {
+                        Ok(x) => x,
+                        Err(_) => continue,
+                    };
+
+                    (*worker_queue)
+                        .lock()
+                        .unwrap()
+                        .push_back(FileBundle(file, file_type));
+                }
+            }
+        } else {
+            let file_type: FileType = match Self::classify_file(&root) {
+                Some(x) => x,
+                None => return Ok(()),
+            };
+
+            let file: File = File::open(root)?;
+
+            (*worker_queue)
+                .lock()
+                .unwrap()
+                .push_back(FileBundle(file, file_type));
+        }
+
+        Ok(())
+    }
+
     pub fn log(&mut self) -> Result<(), std::io::Error> {
-        let worker_queue: Arc<Mutex<VecDeque<DirEntry>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let worker_queue: Arc<Mutex<VecDeque<FileBundle>>> = Arc::new(Mutex::new(VecDeque::new()));
 
         let worker_count = NonZero::new(num_cpus::get_physical());
         let worker_count = match worker_count {
@@ -162,14 +178,7 @@ impl<'a> Logger<'a> {
             }));
         }
 
-        if self.root_directory.is_dir() {
-            for entry in self.root_directory.read_dir()? {
-                let entry = entry?;
-                (*worker_queue).lock().unwrap().push_back(entry);
-            }
-        } else {
-            Self::parse_file(&self.root_directory);
-        }
+        Self::populate_queue(worker_queue.clone(), self.root_directory);
 
         while (*worker_queue).lock().unwrap().len() > 0 {
             continue;

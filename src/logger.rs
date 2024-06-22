@@ -26,7 +26,7 @@ use std::{
     thread,
 };
 
-use crate::{filebundle::FileBundle, filetype::FileType};
+use crate::filetype::FileType;
 
 pub struct Logger<'a> {
     root_directory: &'a Path,
@@ -36,7 +36,7 @@ pub struct Logger<'a> {
 
 impl<'a> Logger<'a> {
     const KEY_COMMENTS: [&'a str; 4] = ["TODO", "HACK", "BUG", "FIXME"];
-    const CORE_NUM_ERROR: &'a str = "Could not properly deduce number of cpu cores!";
+    const CORE_NUM_ERROR: &'a str = "ERROR: Could not properly deduce number of cpu cores!";
 
     pub fn new(directory: &'a PathBuf, verbose_printing: bool) -> Self {
         let mut comment_table: HashMap<&'a str, usize> = HashMap::new();
@@ -51,41 +51,41 @@ impl<'a> Logger<'a> {
         }
     }
 
-    fn classify_file(file: &Path) -> Option<FileType<'static>> {
+    fn classify_file(file: &Path) -> Option<FileType> {
         return match file.extension() {
             Some(extension) => match extension.to_str() {
                 Some("c") => Some(FileType::C {
-                    inline_comment_fomrat: Some("//"),
+                    inline_comment_format: Some("//"),
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
                 Some("cpp") => Some(FileType::Cpp {
-                    inline_comment_fomrat: Some("//"),
+                    inline_comment_format: Some("//"),
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
                 Some("py") => Some(FileType::Python {
-                    inline_comment_fomrat: Some("#"),
+                    inline_comment_format: Some("#"),
                     multiline_comment_start_format: None,
                     multiline_comment_end_format: None,
                 }),
                 Some("zig") => Some(FileType::Zig {
-                    inline_comment_fomrat: Some("//"),
+                    inline_comment_format: Some("//"),
                     multiline_comment_start_format: None,
                     multiline_comment_end_format: None,
                 }),
                 Some("rs") => Some(FileType::Rust {
-                    inline_comment_fomrat: Some("//"),
+                    inline_comment_format: Some("//"),
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
                 Some("js") => Some(FileType::Javascript {
-                    inline_comment_fomrat: Some("//"),
+                    inline_comment_format: Some("//"),
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
                 Some("ts") => Some(FileType::Typescript {
-                    inline_comment_fomrat: Some("//"),
+                    inline_comment_format: Some("//"),
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
@@ -93,7 +93,7 @@ impl<'a> Logger<'a> {
             },
             None => match file.to_str() {
                 Some("Makefile") => Some(FileType::Makefile {
-                    inline_comment_fomrat: Some("#"),
+                    inline_comment_format: Some("#"),
                     multiline_comment_start_format: None,
                     multiline_comment_end_format: None,
                 }),
@@ -103,61 +103,125 @@ impl<'a> Logger<'a> {
         };
     }
 
-    fn process_line(line: &str, filetype: &FileType) {
+    fn process_line(line: &str, filetype: &FileType, inside_multiline_comment: &mut bool) {
         if line.is_empty() {
             return;
         }
 
-        match filetype {
-            FileType::C {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
-            FileType::Cpp {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
-            FileType::Python {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
-            FileType::Rust {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
-            FileType::Zig {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
-            FileType::Javascript {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
-            FileType::Typescript {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
-            FileType::Makefile {
-                inline_comment_fomrat,
-                multiline_comment_start_format,
-                multiline_comment_end_format,
-            } => todo!(),
+        let (inline_comment_format, multiline_comment_start_format, multiline_comment_end_format) =
+            match *filetype {
+                FileType::C {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::Cpp {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::Python {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::Rust {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::Zig {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::Javascript {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::Typescript {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::Makefile {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+            };
+
+        let comment_portion: &str = match (*inside_multiline_comment, inline_comment_format) {
+            (true, _) => line,
+            (false, None) => return,
+            (false, Some(comment_pattern)) => {
+                let position: Option<usize> = line.find(comment_pattern);
+                if let Some(comment_position) = position {
+                    &line[comment_position..]
+                } else {
+                    return;
+                }
+            }
+        };
+
+        for keyword in Self::KEY_COMMENTS {
+            if comment_portion.contains(keyword) {
+                println!(
+                    "{} Found!\nFile: {:?}\nLine: {}\n",
+                    keyword, "Unimplememted", line
+                );
+            }
         }
     }
 
-    fn parse_file(file_bundle: FileBundle) {
-        let FileBundle(file, file_type) = file_bundle;
+    fn parse_file(file_path: &Path) {
+        // println!("Parsing File: {:?}", file);
 
-        println!("Parsing File: {:?}", file);
+        let file = match File::open(file_path) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
+
+        let file_type = match Self::classify_file(file_path) {
+            Some(t) => t,
+            None => return,
+        };
 
         let file_reader: BufReader<File> = BufReader::new(file);
+        let mut inside_multiline_comment: bool = false;
 
         for line in file_reader.lines() {
             Self::process_line(
@@ -166,11 +230,12 @@ impl<'a> Logger<'a> {
                     Err(_) => "",
                 },
                 &file_type,
+                &mut inside_multiline_comment,
             );
         }
     }
 
-    fn waiting_room(data: Arc<Mutex<VecDeque<FileBundle>>>, abort: Arc<Mutex<bool>>) {
+    fn waiting_room(data: Arc<Mutex<VecDeque<PathBuf>>>, abort: Arc<Mutex<bool>>) {
         loop {
             let entry = (*data).lock().unwrap().pop_front();
             match entry {
@@ -181,56 +246,36 @@ impl<'a> Logger<'a> {
                         continue;
                     }
                 }
-                Some(found_file) => Self::parse_file(found_file),
+                Some(found_file) => Self::parse_file(&found_file),
             };
         }
     }
 
     fn populate_queue(
-        worker_queue: Arc<Mutex<VecDeque<FileBundle>>>,
+        worker_queue: Arc<Mutex<VecDeque<PathBuf>>>,
         root: &Path,
     ) -> Result<(), std::io::Error> {
         if root.is_dir() {
             for entry in root.read_dir()? {
                 let entry = entry?;
                 if entry.path().is_dir() {
-                    Self::populate_queue(worker_queue.clone(), &entry.path());
+                    Self::populate_queue(worker_queue.clone(), &entry.path())?;
                 } else {
-                    let file: File = match File::open(entry.path()) {
-                        Ok(x) => x,
-                        Err(_) => continue,
-                    };
-
-                    let file_type: FileType = match Self::classify_file(&entry.path()) {
-                        Some(x) => x,
-                        None => continue,
-                    };
-
-                    (*worker_queue)
-                        .lock()
-                        .unwrap()
-                        .push_back(FileBundle(file, file_type));
+                    (*worker_queue).lock().unwrap().push_back(entry.path());
                 }
             }
         } else {
-            let file_type: FileType = match Self::classify_file(&root) {
-                Some(x) => x,
-                None => return Ok(()),
-            };
-
-            let file: File = File::open(root)?;
-
             (*worker_queue)
                 .lock()
                 .unwrap()
-                .push_back(FileBundle(file, file_type));
+                .push_back(root.to_path_buf());
         }
 
         Ok(())
     }
 
     pub fn log(&mut self) -> Result<(), std::io::Error> {
-        let worker_queue: Arc<Mutex<VecDeque<FileBundle>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let worker_queue: Arc<Mutex<VecDeque<PathBuf>>> = Arc::new(Mutex::new(VecDeque::new()));
 
         let worker_count = NonZero::new(num_cpus::get_physical());
         let worker_count = match worker_count {
@@ -256,7 +301,7 @@ impl<'a> Logger<'a> {
             }));
         }
 
-        Self::populate_queue(worker_queue.clone(), self.root_directory);
+        Self::populate_queue(worker_queue.clone(), self.root_directory)?;
 
         while (*worker_queue).lock().unwrap().len() > 0 {
             continue;

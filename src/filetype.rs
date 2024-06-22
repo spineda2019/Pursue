@@ -7,5 +7,4 @@ pub enum FileType {
     Javascript,
     Typescript,
     Makefile,
-    Unknown,
 }

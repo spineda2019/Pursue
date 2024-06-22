@@ -103,7 +103,12 @@ impl<'a> Logger<'a> {
         };
     }
 
-    fn process_line(line: &str, filetype: &FileType, inside_multiline_comment: &mut bool) {
+    fn process_line(
+        line: &str,
+        filetype: &FileType,
+        inside_multiline_comment: &mut bool,
+        file_path: &Path,
+    ) {
         if line.is_empty() {
             return;
         }
@@ -201,7 +206,7 @@ impl<'a> Logger<'a> {
             if comment_portion.contains(keyword) {
                 println!(
                     "{} Found!\nFile: {:?}\nLine: {}\n",
-                    keyword, "Unimplememted", line
+                    keyword, file_path, line
                 );
             }
         }
@@ -231,6 +236,7 @@ impl<'a> Logger<'a> {
                 },
                 &file_type,
                 &mut inside_multiline_comment,
+                file_path,
             );
         }
     }

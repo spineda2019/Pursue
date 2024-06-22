@@ -18,7 +18,7 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    fs::{File, Metadata},
+    fs::File,
     io::{BufRead, BufReader, ErrorKind},
     num::NonZero,
     path::{Path, PathBuf},
@@ -160,10 +160,13 @@ impl<'a> Logger<'a> {
         let file_reader: BufReader<File> = BufReader::new(file);
 
         for line in file_reader.lines() {
-            Self::process_line(match &line {
-                Ok(good_line) => good_line,
-                Err(_) => "",
-            });
+            Self::process_line(
+                match &line {
+                    Ok(good_line) => good_line,
+                    Err(_) => "",
+                },
+                &file_type,
+            );
         }
     }
 
@@ -193,14 +196,14 @@ impl<'a> Logger<'a> {
                 if entry.path().is_dir() {
                     Self::populate_queue(worker_queue.clone(), &entry.path());
                 } else {
-                    let file_type: FileType = match Self::classify_file(&entry.path()) {
-                        Some(x) => x,
-                        None => continue,
-                    };
-
                     let file: File = match File::open(entry.path()) {
                         Ok(x) => x,
                         Err(_) => continue,
+                    };
+
+                    let file_type: FileType = match Self::classify_file(&entry.path()) {
+                        Some(x) => x,
+                        None => continue,
                     };
 
                     (*worker_queue)

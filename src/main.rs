@@ -17,6 +17,7 @@
  */
 
 mod filetype;
+mod log_result;
 mod logger;
 
 use std::path::{Path, PathBuf};

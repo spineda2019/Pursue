@@ -83,7 +83,7 @@ impl<'a> Logger<'a> {
                 }),
                 _ => None,
             },
-            None => match file.to_str() {
+            None => match file.file_name()?.to_str() {
                 Some("Makefile") => Some(FileType::Makefile {
                     inline_comment_format: Some("#"),
                     multiline_comment_start_format: None,

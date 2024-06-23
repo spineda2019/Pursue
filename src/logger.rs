@@ -293,7 +293,7 @@ impl<'a> Logger<'a> {
         let worker_queue: Arc<Mutex<VecDeque<PathBuf>>> = Arc::new(Mutex::new(VecDeque::new()));
         let result: Arc<Mutex<LogResult>> = Arc::new(Mutex::new(LogResult::new()));
 
-        let worker_count = NonZero::new(num_cpus::get_physical());
+        let worker_count = NonZero::new(num_cpus::get());
         let worker_count = match worker_count {
             Some(number) => number,
             None => {

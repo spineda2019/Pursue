@@ -202,17 +202,19 @@ impl<'a> Logger<'a> {
             }
         };
 
-        for keyword in Self::KEY_COMMENTS {
+        for keyword in LogResult::KEY_COMMENTS {
             if comment_portion.contains(keyword) {
                 println!(
                     "{} Found!\nFile: {:?}\nLine: {}\n",
                     keyword, file_path, line
                 );
+
+                result.lock().unwrap().increment_keyword(keyword);
             }
         }
     }
 
-    fn parse_file(file_path: &Path) {
+    fn parse_file(file_path: &Path, result: &Arc<Mutex<LogResult>>) {
         // println!("Parsing File: {:?}", file);
 
         let file = match File::open(file_path) {

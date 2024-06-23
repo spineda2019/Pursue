@@ -108,7 +108,7 @@ impl<'a> Logger<'a> {
         }
 
         let (inline_comment_format, multiline_comment_start_format, multiline_comment_end_format) =
-            match *filetype {
+            match filetype {
                 FileType::C {
                     inline_comment_format,
                     multiline_comment_start_format,
@@ -183,7 +183,7 @@ impl<'a> Logger<'a> {
                 ),
             };
 
-        let comment_portion: &str = match (*inside_multiline_comment, inline_comment_format) {
+        let comment_portion: &str = match (inside_multiline_comment, inline_comment_format) {
             (true, _) => line,
             (false, None) => return,
             (false, Some(comment_pattern)) => {
@@ -255,7 +255,7 @@ impl<'a> Logger<'a> {
         verbose: bool,
     ) {
         loop {
-            let entry = (*data).lock().unwrap().pop_front();
+            let entry = data.lock().unwrap().pop_front();
             match entry {
                 None => {
                     if *abort.lock().unwrap() {

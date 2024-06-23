@@ -198,7 +198,9 @@ impl<'a> Logger<'a> {
 
         for keyword in LogResult::KEY_COMMENTS {
             if comment_portion.contains(keyword) {
-                result.lock().unwrap().increment_keyword(keyword);
+                {
+                    result.lock().unwrap().increment_keyword(keyword);
+                }
 
                 if verbose {
                     println!(
@@ -223,10 +225,12 @@ impl<'a> Logger<'a> {
             None => return,
         };
 
-        result
-            .lock()
-            .unwrap()
-            .increment_filetype_frequency(&file_type);
+        {
+            result
+                .lock()
+                .unwrap()
+                .increment_filetype_frequency(&file_type);
+        }
 
         let file_reader: BufReader<File> = BufReader::new(file);
         let mut inside_multiline_comment: bool = false;
@@ -255,7 +259,11 @@ impl<'a> Logger<'a> {
         verbose: bool,
     ) {
         loop {
-            let entry = data.lock().unwrap().pop_front();
+            let entry: Option<PathBuf>;
+            {
+                entry = data.lock().unwrap().pop_front();
+            }
+
             match entry {
                 None => {
                     if *abort.lock().unwrap() {
@@ -327,10 +335,13 @@ impl<'a> Logger<'a> {
         Self::populate_queue(worker_queue.clone(), self.root_directory)?;
 
         while worker_queue.lock().unwrap().len() > 0 {
+            std::hint::spin_loop();
             continue;
         }
 
-        *abort.lock().unwrap() = true;
+        {
+            *abort.lock().unwrap() = true;
+        }
 
         for job in jobs {
             let _ = job.join();

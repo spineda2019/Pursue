@@ -26,8 +26,16 @@ use argparse::{ArgumentParser, Store, StoreTrue};
 use logger::Logger;
 
 const VERSION: &str = "0.0.1";
+const COOL_NAME_ART: &str = r"
+___________
+\___   ___/___________    ____  ____
+   |   |  \_  __ \__  \ _/ ___\/ __ \
+   |   |   |  | \// __ \\  \__\  ___/
+   |___|   |__|  (____ / \_____\____|
+";
 
 fn print_version_info() {
+    println!("{}", COOL_NAME_ART);
     println!("Trace version {}", VERSION);
 }
 

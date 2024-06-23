@@ -101,6 +101,7 @@ impl<'a> Logger<'a> {
         inside_multiline_comment: &mut bool,
         file_path: &Path,
         result: &Arc<Mutex<LogResult>>,
+        verbose: bool,
     ) {
         if line.is_empty() {
             return;
@@ -197,17 +198,19 @@ impl<'a> Logger<'a> {
 
         for keyword in LogResult::KEY_COMMENTS {
             if comment_portion.contains(keyword) {
-                println!(
-                    "{} Found!\nFile: {:?}\nLine: {}\n",
-                    keyword, file_path, line
-                );
-
                 result.lock().unwrap().increment_keyword(keyword);
+
+                if verbose {
+                    println!(
+                        "{} Found!\nFile: {:?}\nLine: {}\n",
+                        keyword, file_path, line
+                    );
+                }
             }
         }
     }
 
-    fn parse_file(file_path: &Path, result: &Arc<Mutex<LogResult>>) {
+    fn parse_file(file_path: &Path, result: &Arc<Mutex<LogResult>>, verbose: bool) {
         // println!("Parsing File: {:?}", file);
 
         let file = match File::open(file_path) {
@@ -238,6 +241,7 @@ impl<'a> Logger<'a> {
                 &mut inside_multiline_comment,
                 file_path,
                 result,
+                verbose,
             );
 
             result.lock().unwrap().increment_line_count();
@@ -248,6 +252,7 @@ impl<'a> Logger<'a> {
         data: Arc<Mutex<VecDeque<PathBuf>>>,
         abort: Arc<Mutex<bool>>,
         result: Arc<Mutex<LogResult>>,
+        verbose: bool,
     ) {
         loop {
             let entry = (*data).lock().unwrap().pop_front();
@@ -259,7 +264,7 @@ impl<'a> Logger<'a> {
                         continue;
                     }
                 }
-                Some(found_file) => Self::parse_file(&found_file, &result),
+                Some(found_file) => Self::parse_file(&found_file, &result, verbose),
             };
         }
     }
@@ -300,6 +305,11 @@ impl<'a> Logger<'a> {
             }
         };
 
+        println!(
+            "Number of CPUs supported for Trace's file I/O: {}\n",
+            worker_count
+        );
+
         let abort: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
 
         let mut jobs = vec![];
@@ -308,8 +318,9 @@ impl<'a> Logger<'a> {
             let data = worker_queue.clone();
             let abort = abort.clone();
             let result = result.clone();
-            jobs.push(thread::spawn(|| {
-                Self::waiting_room(data, abort, result);
+            let verbose = self.verbose;
+            jobs.push(thread::spawn(move || {
+                Self::waiting_room(data, abort, result, verbose);
             }));
         }
 

@@ -17,7 +17,7 @@
  */
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     fs::File,
     io::{BufRead, BufReader, ErrorKind},
     num::NonZero,
@@ -26,28 +26,20 @@ use std::{
     thread,
 };
 
-use crate::filetype::FileType;
+use crate::{filetype::FileType, log_result::LogResult};
 
 pub struct Logger<'a> {
     root_directory: &'a Path,
     verbose: bool,
-    key_comment_table: HashMap<&'a str, usize>,
 }
 
 impl<'a> Logger<'a> {
-    const KEY_COMMENTS: [&'a str; 4] = ["TODO", "HACK", "BUG", "FIXME"];
     const CORE_NUM_ERROR: &'a str = "ERROR: Could not properly deduce number of cpu cores!";
 
     pub fn new(directory: &'a PathBuf, verbose_printing: bool) -> Self {
-        let mut comment_table: HashMap<&'a str, usize> = HashMap::new();
-        for comment in Self::KEY_COMMENTS {
-            comment_table.insert(comment, 0);
-        }
-
         Self {
             root_directory: directory,
             verbose: verbose_printing,
-            key_comment_table: comment_table,
         }
     }
 
@@ -108,6 +100,7 @@ impl<'a> Logger<'a> {
         filetype: &FileType,
         inside_multiline_comment: &mut bool,
         file_path: &Path,
+        result: &Arc<Mutex<LogResult>>,
     ) {
         if line.is_empty() {
             return;
@@ -227,6 +220,11 @@ impl<'a> Logger<'a> {
             None => return,
         };
 
+        result
+            .lock()
+            .unwrap()
+            .increment_filetype_frequency(&file_type);
+
         let file_reader: BufReader<File> = BufReader::new(file);
         let mut inside_multiline_comment: bool = false;
 
@@ -239,11 +237,18 @@ impl<'a> Logger<'a> {
                 &file_type,
                 &mut inside_multiline_comment,
                 file_path,
+                result,
             );
+
+            result.lock().unwrap().increment_line_count();
         }
     }
 
-    fn waiting_room(data: Arc<Mutex<VecDeque<PathBuf>>>, abort: Arc<Mutex<bool>>) {
+    fn waiting_room(
+        data: Arc<Mutex<VecDeque<PathBuf>>>,
+        abort: Arc<Mutex<bool>>,
+        result: Arc<Mutex<LogResult>>,
+    ) {
         loop {
             let entry = (*data).lock().unwrap().pop_front();
             match entry {
@@ -254,7 +259,7 @@ impl<'a> Logger<'a> {
                         continue;
                     }
                 }
-                Some(found_file) => Self::parse_file(&found_file),
+                Some(found_file) => Self::parse_file(&found_file, &result),
             };
         }
     }
@@ -269,21 +274,19 @@ impl<'a> Logger<'a> {
                 if entry.path().is_dir() {
                     Self::populate_queue(worker_queue.clone(), &entry.path())?;
                 } else {
-                    (*worker_queue).lock().unwrap().push_back(entry.path());
+                    worker_queue.lock().unwrap().push_back(entry.path());
                 }
             }
         } else {
-            (*worker_queue)
-                .lock()
-                .unwrap()
-                .push_back(root.to_path_buf());
+            worker_queue.lock().unwrap().push_back(root.to_path_buf());
         }
 
         Ok(())
     }
 
-    pub fn log(&mut self) -> Result<(), std::io::Error> {
+    pub fn log(&self) -> Result<(), std::io::Error> {
         let worker_queue: Arc<Mutex<VecDeque<PathBuf>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let result: Arc<Mutex<LogResult>> = Arc::new(Mutex::new(LogResult::new()));
 
         let worker_count = NonZero::new(num_cpus::get_physical());
         let worker_count = match worker_count {
@@ -304,22 +307,25 @@ impl<'a> Logger<'a> {
         for _ in 0..worker_count.get() {
             let data = worker_queue.clone();
             let abort = abort.clone();
+            let result = result.clone();
             jobs.push(thread::spawn(|| {
-                Self::waiting_room(data, abort);
+                Self::waiting_room(data, abort, result);
             }));
         }
 
         Self::populate_queue(worker_queue.clone(), self.root_directory)?;
 
-        while (*worker_queue).lock().unwrap().len() > 0 {
+        while worker_queue.lock().unwrap().len() > 0 {
             continue;
         }
 
         *abort.lock().unwrap() = true;
 
         for job in jobs {
-            job.join();
+            let _ = job.join();
         }
+
+        result.lock().unwrap().print_result();
 
         Ok(())
     }

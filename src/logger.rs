@@ -56,6 +56,11 @@ impl<'a> Logger<'a> {
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
+                Some("cs") => Some(FileType::CSharp {
+                    inline_comment_format: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
                 Some("py") => Some(FileType::Python {
                     inline_comment_format: Some("#"),
                     multiline_comment_start_format: None,
@@ -119,6 +124,15 @@ impl<'a> Logger<'a> {
                     multiline_comment_end_format,
                 ),
                 FileType::Cpp {
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                } => (
+                    inline_comment_format,
+                    multiline_comment_start_format,
+                    multiline_comment_end_format,
+                ),
+                FileType::CSharp {
                     inline_comment_format,
                     multiline_comment_start_format,
                     multiline_comment_end_format,

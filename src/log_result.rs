@@ -66,6 +66,11 @@ impl<'a> LogResult<'a> {
                 multiline_comment_start_format: _,
                 multiline_comment_end_format: _,
             } => "C++",
+            FileType::CSharp {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "C#",
             FileType::Python {
                 inline_comment_format: _,
                 multiline_comment_start_format: _,

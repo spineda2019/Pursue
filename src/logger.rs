@@ -29,7 +29,10 @@ use std::{
     thread,
 };
 
-use crate::{filetype::FileType, log_result::LogResult};
+use crate::{
+    filetype::{destructure_filetype, FileType},
+    log_result::LogResult,
+};
 
 pub struct Logger {
     data: Arc<Mutex<VecDeque<PathBuf>>>,
@@ -132,89 +135,7 @@ impl<'a> Logger {
         }
 
         let (inline_comment_format, multiline_comment_start_format, multiline_comment_end_format) =
-            match filetype {
-                FileType::C {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::Cpp {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::CSharp {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::Python {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::Rust {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::Zig {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::Javascript {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::Typescript {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-                FileType::Makefile {
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                } => (
-                    inline_comment_format,
-                    multiline_comment_start_format,
-                    multiline_comment_end_format,
-                ),
-            };
+            destructure_filetype!(filetype);
 
         let comment_portion: &str = match (inside_multiline_comment, inline_comment_format) {
             (true, _) => line,

@@ -68,6 +68,95 @@ macro_rules! stringify_filetype {
     };
 }
 
+macro_rules! destructure_filetype {
+    ($ft: ident) => {
+        match $ft {
+            FileType::C {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Cpp {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::CSharp {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Python {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Rust {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Zig {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Javascript {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Typescript {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Makefile {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+        }
+    };
+}
+
+pub(crate) use destructure_filetype;
 pub(crate) use stringify_filetype;
 
 pub enum FileType<'b> {

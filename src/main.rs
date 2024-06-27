@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 use argparse::{ArgumentParser, Store, StoreTrue};
 use logger::Logger;
 
+const COPYRIGHT_NOTICE: &str = "Copyright (c) 2024 Sebastian Pineda (spineda.wpi.alum@gmail.com)
+This program is free software; you may redistribute it under the terms of the
+GNU General Public License version 2 or (at your option) any later version. This
+program has absolutely no warranty.";
 const VERSION: &str = "0.0.1";
 const COOL_NAME_ART: &str = r"
 ___________
@@ -36,7 +40,8 @@ ___________
 
 fn print_version_info() {
     println!("{}", COOL_NAME_ART);
-    println!("Trace version {}", VERSION);
+    println!("Trace version {}\n", VERSION);
+    println!("{}\n", COPYRIGHT_NOTICE);
 }
 
 fn main() -> Result<(), std::io::Error> {

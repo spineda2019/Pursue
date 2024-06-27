@@ -28,16 +28,32 @@ use std::{
 
 use crate::{filetype::FileType, log_result::LogResult};
 
-pub struct Logger<'a> {
-    root_directory: &'a Path,
+pub struct Logger {
+    data: Arc<Mutex<VecDeque<PathBuf>>>,
+    abort: Arc<Mutex<bool>>,
+    root_directory: PathBuf,
     verbose: bool,
 }
 
-impl<'a> Logger<'a> {
-    const CORE_NUM_ERROR: &'a str = "ERROR: Could not properly deduce number of cpu cores!";
-
-    pub fn new(directory: &'a PathBuf, verbose_printing: bool) -> Self {
+impl Clone for Logger {
+    fn clone(&self) -> Self {
         Self {
+            data: self.data.clone(),
+            abort: self.abort.clone(),
+            root_directory: self.root_directory.clone(),
+            verbose: self.verbose,
+        }
+    }
+}
+
+impl<'a> Logger {
+    const CORE_NUM_ERROR: &'a str = "ERROR: Could not properly deduce number of cpu cores!";
+    const CPP_FILE_EXTENSIONS: [&'a str; 3] = ["cpp", "cxx", "cc"];
+
+    pub fn new(directory: PathBuf, verbose_printing: bool) -> Self {
+        Self {
+            data: Arc::new(Mutex::new(VecDeque::new())),
+            abort: Arc::new(Mutex::new(false)),
             root_directory: directory,
             verbose: verbose_printing,
         }
@@ -51,7 +67,7 @@ impl<'a> Logger<'a> {
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
-                Some("cpp") => Some(FileType::Cpp {
+                Some(ext) if Self::CPP_FILE_EXTENSIONS.contains(&ext) => Some(FileType::Cpp {
                     inline_comment_format: Some("//"),
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
@@ -101,12 +117,12 @@ impl<'a> Logger<'a> {
     }
 
     fn process_line(
+        &self,
         line: &str,
         filetype: &FileType,
         inside_multiline_comment: &mut bool,
         file_path: &Path,
         result: &Arc<Mutex<LogResult>>,
-        verbose: bool,
     ) {
         if line.is_empty() {
             return;
@@ -216,7 +232,7 @@ impl<'a> Logger<'a> {
                     result.lock().unwrap().increment_keyword(keyword);
                 }
 
-                if verbose {
+                if self.verbose {
                     println!(
                         "{} Found!\nFile: {:?}\nLine: {}\n",
                         keyword, file_path, line
@@ -226,7 +242,7 @@ impl<'a> Logger<'a> {
         }
     }
 
-    fn parse_file(file_path: &Path, result: &Arc<Mutex<LogResult>>, verbose: bool) {
+    fn parse_file(&self, file_path: &Path, result: &Arc<Mutex<LogResult>>) {
         // println!("Parsing File: {:?}", file);
 
         let file = match File::open(file_path) {
@@ -250,7 +266,7 @@ impl<'a> Logger<'a> {
         let mut inside_multiline_comment: bool = false;
 
         for line in file_reader.lines() {
-            Self::process_line(
+            self.process_line(
                 match &line {
                     Ok(good_line) => good_line,
                     Err(_) => "",
@@ -259,60 +275,52 @@ impl<'a> Logger<'a> {
                 &mut inside_multiline_comment,
                 file_path,
                 result,
-                verbose,
             );
 
-            result.lock().unwrap().increment_line_count();
+            {
+                result.lock().unwrap().increment_line_count();
+            }
         }
     }
 
-    fn waiting_room(
-        data: Arc<Mutex<VecDeque<PathBuf>>>,
-        abort: Arc<Mutex<bool>>,
-        result: Arc<Mutex<LogResult>>,
-        verbose: bool,
-    ) {
+    fn waiting_room(&self, result: Arc<Mutex<LogResult>>) {
         loop {
             let entry: Option<PathBuf>;
             {
-                entry = data.lock().unwrap().pop_front();
+                entry = self.data.lock().unwrap().pop_front();
             }
 
             match entry {
                 None => {
-                    if *abort.lock().unwrap() {
+                    if *self.abort.lock().unwrap() {
                         return;
                     } else {
                         continue;
                     }
                 }
-                Some(found_file) => Self::parse_file(&found_file, &result, verbose),
+                Some(found_file) => self.parse_file(&found_file, &result),
             };
         }
     }
 
-    fn populate_queue(
-        worker_queue: Arc<Mutex<VecDeque<PathBuf>>>,
-        root: &Path,
-    ) -> Result<(), std::io::Error> {
+    fn populate_queue(&self, root: &Path) -> Result<(), std::io::Error> {
         if root.is_dir() {
             for entry in root.read_dir()? {
                 let entry = entry?;
                 if entry.path().is_dir() {
-                    Self::populate_queue(worker_queue.clone(), &entry.path())?;
+                    self.populate_queue(&entry.path())?;
                 } else {
-                    worker_queue.lock().unwrap().push_back(entry.path());
+                    self.data.lock().unwrap().push_back(entry.path());
                 }
             }
         } else {
-            worker_queue.lock().unwrap().push_back(root.to_path_buf());
+            self.data.lock().unwrap().push_back(root.to_path_buf());
         }
 
         Ok(())
     }
 
     pub fn log(&self) -> Result<(), std::io::Error> {
-        let worker_queue: Arc<Mutex<VecDeque<PathBuf>>> = Arc::new(Mutex::new(VecDeque::new()));
         let result: Arc<Mutex<LogResult>> = Arc::new(Mutex::new(LogResult::new()));
 
         let worker_count = NonZero::new(num_cpus::get());
@@ -332,36 +340,28 @@ impl<'a> Logger<'a> {
             worker_count
         );
 
-        let abort: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-
-        let mut jobs = vec![];
-
         for _ in 0..worker_count.get() {
-            let data = worker_queue.clone();
-            let abort = abort.clone();
+            let self_clone = self.clone();
             let result = result.clone();
-            let verbose = self.verbose;
-            jobs.push(thread::spawn(move || {
-                Self::waiting_room(data, abort, result, verbose);
-            }));
+            thread::spawn(move || {
+                self_clone.waiting_room(result);
+            });
         }
 
-        Self::populate_queue(worker_queue.clone(), self.root_directory)?;
+        self.populate_queue(&self.root_directory)?;
 
-        while worker_queue.lock().unwrap().len() > 0 {
+        while self.data.lock().unwrap().len() > 0 {
             std::hint::spin_loop();
             continue;
         }
 
         {
-            *abort.lock().unwrap() = true;
+            *self.abort.lock().unwrap() = true;
         }
 
-        for job in jobs {
-            let _ = job.join();
+        {
+            result.lock().unwrap().print_result();
         }
-
-        result.lock().unwrap().print_result();
 
         Ok(())
     }

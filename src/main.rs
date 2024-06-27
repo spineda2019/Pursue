@@ -87,7 +87,7 @@ fn main() -> Result<(), std::io::Error> {
         true => std::env::current_dir()?,
     };
 
-    let logger = Logger::new(&designated_dir, logging);
+    let logger = Logger::new(designated_dir, logging);
     logger.log()?;
 
     Ok(())

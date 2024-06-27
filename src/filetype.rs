@@ -34,6 +34,11 @@ macro_rules! stringify_filetype {
                 multiline_comment_start_format: _,
                 multiline_comment_end_format: _,
             } => "C#",
+            FileType::Java {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "Java",
             FileType::Python {
                 inline_comment_format: _,
                 multiline_comment_start_format: _,
@@ -90,6 +95,15 @@ macro_rules! destructure_filetype {
                 multiline_comment_end_format,
             ),
             FileType::CSharp {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::Java {
                 inline_comment_format,
                 multiline_comment_start_format,
                 multiline_comment_end_format,
@@ -171,6 +185,11 @@ pub enum FileType<'b> {
         multiline_comment_end_format: Option<&'b str>,
     },
     CSharp {
+        inline_comment_format: Option<&'b str>,
+        multiline_comment_start_format: Option<&'b str>,
+        multiline_comment_end_format: Option<&'b str>,
+    },
+    Java {
         inline_comment_format: Option<&'b str>,
         multiline_comment_start_format: Option<&'b str>,
         multiline_comment_end_format: Option<&'b str>,

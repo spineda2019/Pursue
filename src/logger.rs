@@ -83,6 +83,11 @@ impl<'a> Logger {
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
+                Some("java") => Some(FileType::Java {
+                    inline_comment_format: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
                 Some("py") => Some(FileType::Python {
                     inline_comment_format: Some("#"),
                     multiline_comment_start_format: None,

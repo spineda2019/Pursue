@@ -16,6 +16,60 @@
  *  with this program. If not, see <https://www.gnu.org/licenses/>
  */
 
+macro_rules! stringify_filetype {
+    ($ft: ident) => {
+        match $ft {
+            FileType::C {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "C",
+            FileType::Cpp {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "C++",
+            FileType::CSharp {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "C#",
+            FileType::Python {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "Python",
+            FileType::Rust {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "Rust",
+            FileType::Zig {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "Zig",
+            FileType::Javascript {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "JavaScript",
+            FileType::Typescript {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "TypeScript",
+            FileType::Makefile {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "Makefile",
+        }
+    };
+}
+
+pub(crate) use stringify_filetype;
+
 pub enum FileType<'b> {
     C {
         inline_comment_format: Option<&'b str>,

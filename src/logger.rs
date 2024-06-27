@@ -12,9 +12,7 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License along
- *  with this program. If not, see <https://www.gnu.org/licenses/>
- */
+ *  You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/> */
 
 use std::{
     collections::VecDeque,
@@ -92,6 +90,11 @@ impl<'a> Logger {
                     inline_comment_format: Some("#"),
                     multiline_comment_start_format: None,
                     multiline_comment_end_format: None,
+                }),
+                Some("go") => Some(FileType::Go {
+                    inline_comment_format: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
                 }),
                 Some("zig") => Some(FileType::Zig {
                     inline_comment_format: Some("//"),

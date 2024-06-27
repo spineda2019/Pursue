@@ -22,7 +22,10 @@ use std::{
     io::{BufRead, BufReader, ErrorKind},
     num::NonZero,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc, Mutex,
+    },
     thread,
 };
 
@@ -30,7 +33,7 @@ use crate::{filetype::FileType, log_result::LogResult};
 
 pub struct Logger {
     data: Arc<Mutex<VecDeque<PathBuf>>>,
-    abort: Arc<Mutex<bool>>,
+    finish_flag: Arc<Mutex<bool>>,
     root_directory: PathBuf,
     verbose: bool,
 }
@@ -39,7 +42,7 @@ impl Clone for Logger {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
-            abort: self.abort.clone(),
+            finish_flag: self.finish_flag.clone(),
             root_directory: self.root_directory.clone(),
             verbose: self.verbose,
         }
@@ -53,7 +56,7 @@ impl<'a> Logger {
     pub fn new(directory: PathBuf, verbose_printing: bool) -> Self {
         Self {
             data: Arc::new(Mutex::new(VecDeque::new())),
-            abort: Arc::new(Mutex::new(false)),
+            finish_flag: Arc::new(Mutex::new(false)),
             root_directory: directory,
             verbose: verbose_printing,
         }
@@ -283,7 +286,7 @@ impl<'a> Logger {
         }
     }
 
-    fn waiting_room(&self, result: Arc<Mutex<LogResult>>) {
+    fn waiting_room(&self, result: Arc<Mutex<LogResult>>, producer: Sender<()>) {
         loop {
             let entry: Option<PathBuf>;
             {
@@ -292,7 +295,8 @@ impl<'a> Logger {
 
             match entry {
                 None => {
-                    if *self.abort.lock().unwrap() {
+                    if *self.finish_flag.lock().unwrap() {
+                        drop(producer);
                         return;
                     } else {
                         continue;
@@ -340,24 +344,26 @@ impl<'a> Logger {
             worker_count
         );
 
+        let (producer, consumer): (Sender<()>, Receiver<()>) = mpsc::channel();
+
         for _ in 0..worker_count.get() {
             let self_clone = self.clone();
             let result = result.clone();
+            let producer = producer.clone();
             thread::spawn(move || {
-                self_clone.waiting_room(result);
+                self_clone.waiting_room(result, producer);
             });
         }
 
         self.populate_queue(&self.root_directory)?;
 
-        while self.data.lock().unwrap().len() > 0 {
-            std::hint::spin_loop();
-            continue;
+        {
+            *self.finish_flag.lock().unwrap() = true;
         }
 
-        {
-            *self.abort.lock().unwrap() = true;
-        }
+        drop(producer);
+
+        for _ in consumer {}
 
         {
             result.lock().unwrap().print_result();

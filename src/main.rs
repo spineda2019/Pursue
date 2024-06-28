@@ -28,7 +28,7 @@ const COPYRIGHT_NOTICE: &str = "Copyright (c) 2024 Sebastian Pineda (spineda.wpi
 This program is free software; you may redistribute it under the terms of the
 GNU General Public License version 2 or (at your option) any later version. This
 program has absolutely no warranty.";
-const VERSION: &str = "0.0.1";
+const VERSION: &str = "0.0.5";
 const COOL_NAME_ART: &str = r"
 ___________
 \___   ___/___________    ____  ____

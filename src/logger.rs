@@ -18,16 +18,15 @@ use std::{
     io::{BufRead, BufReader, ErrorKind},
     num::NonZero,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
     thread,
 };
 
 use crate::filetype::{destructure_filetype, stringify_filetype, FileType};
 
-#[derive(Debug)]
 pub struct Logger {
     data: Arc<Mutex<VecDeque<PathBuf>>>,
-    finish_flag: Arc<Mutex<bool>>,
+    finish_flag: Arc<RwLock<bool>>,
     line_count: Arc<Mutex<usize>>,
     keyword_table: Arc<Mutex<HashMap<Arc<str>, usize>>>,
     filetype_table: Arc<Mutex<HashMap<Arc<str>, usize>>>,
@@ -62,7 +61,7 @@ impl<'a> Logger {
 
         Self {
             data: Arc::new(Mutex::new(VecDeque::new())),
-            finish_flag: Arc::new(Mutex::new(false)),
+            finish_flag: Arc::new(RwLock::new(false)),
             line_count: Arc::new(Mutex::new(0)),
             keyword_table: Arc::new(Mutex::new(comment_table)),
             filetype_table: Arc::new(Mutex::new(HashMap::new())),
@@ -270,7 +269,7 @@ impl<'a> Logger {
 
             match entry {
                 None => {
-                    if *self.finish_flag.lock().unwrap() {
+                    if *self.finish_flag.read().unwrap() {
                         return;
                     } else {
                         continue;
@@ -328,7 +327,7 @@ impl<'a> Logger {
         self.populate_queue(&self.root_directory)?;
 
         {
-            *self.finish_flag.lock().unwrap() = true;
+            *self.finish_flag.write().unwrap() = true;
         }
 
         for worker in workers {

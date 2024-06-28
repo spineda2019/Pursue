@@ -80,11 +80,32 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     let designated_dir: PathBuf = match directory.is_empty() {
-        false => match Path::new(&directory).exists() {
-            true => Path::canonicalize(Path::new(&directory))?,
-            false => std::env::current_dir()?,
-        },
-        true => std::env::current_dir()?,
+        false => {
+            let directory_path: &Path = Path::new(&directory);
+            match directory_path.exists() {
+                true => {
+                    let full_directory_path: PathBuf = Path::canonicalize(Path::new(&directory))?;
+                    println!("Analyzing: {:?}", full_directory_path);
+                    full_directory_path
+                }
+                false => {
+                    let cwd: PathBuf = std::env::current_dir()?;
+                    println!(
+                        "WARNING: {:?} not be found, analyzing current working directory: {:?}",
+                        directory_path, cwd
+                    );
+                    cwd
+                }
+            }
+        }
+        true => {
+            let cwd: PathBuf = std::env::current_dir()?;
+            println!(
+                "No Directory specified, analyzing current working directory: {:?}",
+                cwd
+            );
+            cwd
+        }
     };
 
     let logger = Logger::new(designated_dir, logging);

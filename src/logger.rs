@@ -208,7 +208,7 @@ impl<'a> Logger {
             }
         };
 
-        for keyword in LogResult::KEY_COMMENTS {
+        for keyword in Self::KEY_COMMENTS {
             if comment_portion.contains(keyword) {
                 {
                     *self.line_count.lock().unwrap() += 1;

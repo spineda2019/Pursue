@@ -22,10 +22,7 @@ use std::{
     thread,
 };
 
-use crate::{
-    filetype::{destructure_filetype, stringify_filetype, FileType},
-    log_result::LogResult,
-};
+use crate::filetype::{destructure_filetype, stringify_filetype, FileType};
 
 #[derive(Debug)]
 pub struct Logger {

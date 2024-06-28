@@ -184,27 +184,83 @@ impl<'a> Logger {
         &self,
         line: &str,
         filetype: &FileType,
-        inside_multiline_comment: &mut bool,
         file_path: &Path,
+        in_multiline_comment: &mut bool,
     ) {
         if line.is_empty() {
             return;
         }
 
-        let (inline_comment_format, _multiline_comment_start_format, _multiline_comment_end_format) =
+        let (inline_comment_format, multiline_comment_start_format, multiline_comment_end_format) =
             destructure_filetype!(filetype);
 
-        let comment_portion: &str = match (inside_multiline_comment, inline_comment_format) {
-            (true, _) => line,
-            (false, None) => return,
-            (false, Some(comment_pattern)) => {
-                let position: Option<usize> = line.find(comment_pattern);
-                if let Some(comment_position) = position {
-                    &line[comment_position..]
-                } else {
-                    return;
+        let multiline_start_position: Option<usize> = match multiline_comment_start_format {
+            None => None,
+            Some(comment_pattern) => line.find(comment_pattern),
+        };
+
+        let multiline_end_position: Option<usize> = match multiline_comment_end_format {
+            None => None,
+            Some(comment_pattern) => line.rfind(comment_pattern),
+        };
+
+        let comment_position: Option<usize> = match inline_comment_format {
+            None => None,
+            Some(comment_pattern) => line.find(comment_pattern),
+        };
+
+        // TODO(SEP): There should be 1 of these
+        /* HACK(SEP): even in multiline comments
+        /* */ FIXME(SEP): This should be caught even with moronic comment style
+         */ // BUG(SEP): Even when the comments are weird as hell
+
+        let comment_portion: &str = match (
+            multiline_start_position,
+            multiline_end_position,
+            comment_position,
+            *in_multiline_comment,
+        ) {
+            (None, None, None, false) => return,
+            (Some(_), Some(_), None, true) => line,
+            (_, None, _, true) => line,
+            (Some(_), Some(_), Some(_), true) => line,
+
+            (Some(multi_left), None, None, false) => {
+                *in_multiline_comment = true;
+                &line[multi_left..]
+            }
+
+            (None, Some(multi_right), None, _) => {
+                *in_multiline_comment = false;
+                &line[..multi_right]
+            }
+            (None, Some(multi_right), Some(comment_start), _) => {
+                *in_multiline_comment = false;
+                match multi_right < comment_start {
+                    true => &(line[..multi_right].to_string() + &line[comment_start..]),
+                    false => &line[..multi_right],
                 }
             }
+            (Some(multi_left), None, Some(comment_start), false) => {
+                *in_multiline_comment = true;
+                match multi_left < comment_start {
+                    true => &line[multi_left..],
+                    false => &(line[..comment_start].to_string() + &line[multi_left..]),
+                }
+            }
+
+            (Some(multi_left), Some(multi_right), None, false) => &line[multi_left..multi_right],
+
+            (Some(_multi_left), Some(_multi_right), Some(_comment_start), false) => {
+                eprintln!(
+                    "WARNING: 
+                          This is a complex comment and parsing it is not yet implemented: {:?}",
+                    line
+                );
+                line
+            }
+
+            (None, None, Some(comment_start), false) => &line[comment_start..],
         };
 
         for keyword in Self::KEY_COMMENTS {
@@ -241,7 +297,7 @@ impl<'a> Logger {
         self.increment_filetype_frequency(&file_type);
 
         let file_reader: BufReader<File> = BufReader::new(file);
-        let mut inside_multiline_comment: bool = false;
+        let mut in_multiline_comment: bool = false;
 
         for line in file_reader.lines() {
             self.process_line(
@@ -250,8 +306,8 @@ impl<'a> Logger {
                     Err(_) => "",
                 },
                 &file_type,
-                &mut inside_multiline_comment,
                 file_path,
+                &mut in_multiline_comment,
             );
 
             {

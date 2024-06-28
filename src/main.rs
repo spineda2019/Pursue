@@ -108,7 +108,7 @@ fn main() -> Result<(), std::io::Error> {
         }
     };
 
-    let logger = Logger::new(designated_dir, logging);
+    let mut logger = Logger::new(designated_dir, logging);
     logger.log()?;
 
     Ok(())

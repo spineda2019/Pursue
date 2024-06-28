@@ -9,32 +9,31 @@
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
  *  You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/> */
 
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     fs::File,
     io::{BufRead, BufReader, ErrorKind},
     num::NonZero,
     path::{Path, PathBuf},
-    sync::{
-        mpsc::{self, Receiver, Sender},
-        Arc, Mutex,
-    },
+    sync::{Arc, Mutex},
     thread,
 };
 
 use crate::{
-    filetype::{destructure_filetype, FileType},
+    filetype::{destructure_filetype, stringify_filetype, FileType},
     log_result::LogResult,
 };
 
+#[derive(Debug)]
 pub struct Logger {
     data: Arc<Mutex<VecDeque<PathBuf>>>,
     finish_flag: Arc<Mutex<bool>>,
+    line_count: Arc<Mutex<usize>>,
+    keyword_table: Arc<Mutex<HashMap<Arc<str>, usize>>>,
+    filetype_table: Arc<Mutex<HashMap<Arc<str>, usize>>>,
     root_directory: PathBuf,
     verbose: bool,
 }
@@ -44,6 +43,9 @@ impl Clone for Logger {
         Self {
             data: self.data.clone(),
             finish_flag: self.finish_flag.clone(),
+            line_count: self.line_count.clone(),
+            keyword_table: self.keyword_table.clone(),
+            filetype_table: self.filetype_table.clone(),
             root_directory: self.root_directory.clone(),
             verbose: self.verbose,
         }
@@ -53,13 +55,65 @@ impl Clone for Logger {
 impl<'a> Logger {
     const CORE_NUM_ERROR: &'a str = "ERROR: Could not properly deduce number of cpu cores!";
     const CPP_FILE_EXTENSIONS: [&'a str; 3] = ["cpp", "cxx", "cc"];
+    const KEY_COMMENTS: [&'a str; 4] = ["TODO", "HACK", "BUG", "FIXME"];
 
     pub fn new(directory: PathBuf, verbose_printing: bool) -> Self {
+        let mut comment_table: HashMap<Arc<str>, usize> = HashMap::new();
+        for comment in Self::KEY_COMMENTS {
+            comment_table.insert(comment.into(), 0);
+        }
+
         Self {
             data: Arc::new(Mutex::new(VecDeque::new())),
             finish_flag: Arc::new(Mutex::new(false)),
+            line_count: Arc::new(Mutex::new(0)),
+            keyword_table: Arc::new(Mutex::new(comment_table)),
+            filetype_table: Arc::new(Mutex::new(HashMap::new())),
             root_directory: directory,
             verbose: verbose_printing,
+        }
+    }
+
+    fn print_result(&self) {
+        println!("-----------------------------------");
+        println!(
+            "{: <20} | {: <10}\n",
+            "Lines processed",
+            self.line_count.lock().unwrap()
+        );
+
+        println!("-----------------------------------");
+        println!("{: <20} | {: <15}", "Key Comment", "Frequency");
+        println!("-----------------------------------");
+        for (key, frequency) in self.keyword_table.lock().unwrap().iter() {
+            println!("{: <20} | {: <15}", key, frequency);
+        }
+
+        println!("\n-----------------------------------");
+        println!("{: <20} | {: <15}", "File Type", "Frequency");
+        println!("-----------------------------------");
+        for (key, frequency) in self.filetype_table.lock().unwrap().iter() {
+            println!("{: <20} | {: <15}", key, frequency);
+        }
+    }
+
+    fn increment_keyword(&self, keyword: &str) {
+        if let Some(value) = self.keyword_table.lock().unwrap().get_mut(keyword) {
+            *value += 1;
+        } else {
+            self.keyword_table.lock().unwrap().insert(keyword.into(), 1);
+        }
+    }
+
+    fn increment_filetype_frequency(&self, filetype: &FileType) {
+        let name = stringify_filetype!(filetype);
+
+        let mut hashmap_guard = self.filetype_table.lock().unwrap();
+
+        if let Some(value) = hashmap_guard.get_mut(name) {
+            *value += 1;
+        } else {
+            hashmap_guard.insert(name.into(), 1);
         }
     }
 
@@ -136,13 +190,12 @@ impl<'a> Logger {
         filetype: &FileType,
         inside_multiline_comment: &mut bool,
         file_path: &Path,
-        result: &Arc<Mutex<LogResult>>,
     ) {
         if line.is_empty() {
             return;
         }
 
-        let (inline_comment_format, multiline_comment_start_format, multiline_comment_end_format) =
+        let (inline_comment_format, _multiline_comment_start_format, _multiline_comment_end_format) =
             destructure_filetype!(filetype);
 
         let comment_portion: &str = match (inside_multiline_comment, inline_comment_format) {
@@ -161,8 +214,10 @@ impl<'a> Logger {
         for keyword in LogResult::KEY_COMMENTS {
             if comment_portion.contains(keyword) {
                 {
-                    result.lock().unwrap().increment_keyword(keyword);
+                    *self.line_count.lock().unwrap() += 1;
                 }
+
+                self.increment_keyword(keyword);
 
                 if self.verbose {
                     println!(
@@ -174,7 +229,7 @@ impl<'a> Logger {
         }
     }
 
-    fn parse_file(&self, file_path: &Path, result: &Arc<Mutex<LogResult>>) {
+    fn parse_file(&self, file_path: &Path) {
         // println!("Parsing File: {:?}", file);
 
         let file = match File::open(file_path) {
@@ -187,12 +242,7 @@ impl<'a> Logger {
             None => return,
         };
 
-        {
-            result
-                .lock()
-                .unwrap()
-                .increment_filetype_frequency(&file_type);
-        }
+        self.increment_filetype_frequency(&file_type);
 
         let file_reader: BufReader<File> = BufReader::new(file);
         let mut inside_multiline_comment: bool = false;
@@ -206,16 +256,15 @@ impl<'a> Logger {
                 &file_type,
                 &mut inside_multiline_comment,
                 file_path,
-                result,
             );
 
             {
-                result.lock().unwrap().increment_line_count();
+                *self.line_count.lock().unwrap() += 1;
             }
         }
     }
 
-    fn waiting_room(&self, result: Arc<Mutex<LogResult>>, producer: Sender<()>) {
+    fn waiting_room(&self) {
         loop {
             let entry: Option<PathBuf>;
             {
@@ -225,13 +274,12 @@ impl<'a> Logger {
             match entry {
                 None => {
                     if *self.finish_flag.lock().unwrap() {
-                        drop(producer);
                         return;
                     } else {
                         continue;
                     }
                 }
-                Some(found_file) => self.parse_file(&found_file, &result),
+                Some(found_file) => self.parse_file(&found_file),
             };
         }
     }
@@ -253,9 +301,7 @@ impl<'a> Logger {
         Ok(())
     }
 
-    pub fn log(&self) -> Result<(), std::io::Error> {
-        let result: Arc<Mutex<LogResult>> = Arc::new(Mutex::new(LogResult::new()));
-
+    pub fn log(&mut self) -> Result<(), std::io::Error> {
         let worker_count = NonZero::new(num_cpus::get());
         let worker_count = match worker_count {
             Some(number) => number,
@@ -273,15 +319,13 @@ impl<'a> Logger {
             worker_count
         );
 
-        let (producer, consumer): (Sender<()>, Receiver<()>) = mpsc::channel();
+        let mut workers: Vec<thread::JoinHandle<()>> = vec![];
 
         for _ in 0..worker_count.get() {
             let self_clone = self.clone();
-            let result = result.clone();
-            let producer = producer.clone();
-            thread::spawn(move || {
-                self_clone.waiting_room(result, producer);
-            });
+            workers.push(thread::spawn(move || {
+                self_clone.waiting_room();
+            }));
         }
 
         self.populate_queue(&self.root_directory)?;
@@ -290,13 +334,11 @@ impl<'a> Logger {
             *self.finish_flag.lock().unwrap() = true;
         }
 
-        drop(producer);
-
-        for _ in consumer {}
-
-        {
-            result.lock().unwrap().print_result();
+        for worker in workers {
+            let _ = worker.join();
         }
+
+        self.print_result();
 
         Ok(())
     }

@@ -24,11 +24,21 @@ macro_rules! stringify_filetype {
                 multiline_comment_start_format: _,
                 multiline_comment_end_format: _,
             } => "C",
+            FileType::CHeader {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "C Header",
             FileType::Cpp {
                 inline_comment_format: _,
                 multiline_comment_start_format: _,
                 multiline_comment_end_format: _,
             } => "C++",
+            FileType::CppHeader {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "C++ Header",
             FileType::CSharp {
                 inline_comment_format: _,
                 multiline_comment_start_format: _,
@@ -90,7 +100,25 @@ macro_rules! destructure_filetype {
                 multiline_comment_start_format,
                 multiline_comment_end_format,
             ),
+            FileType::CHeader {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
             FileType::Cpp {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
+            FileType::CppHeader {
                 inline_comment_format,
                 multiline_comment_start_format,
                 multiline_comment_end_format,
@@ -193,7 +221,17 @@ pub enum FileType<'b> {
         multiline_comment_start_format: Option<&'b str>,
         multiline_comment_end_format: Option<&'b str>,
     },
+    CHeader {
+        inline_comment_format: Option<&'b str>,
+        multiline_comment_start_format: Option<&'b str>,
+        multiline_comment_end_format: Option<&'b str>,
+    },
     Cpp {
+        inline_comment_format: Option<&'b str>,
+        multiline_comment_start_format: Option<&'b str>,
+        multiline_comment_end_format: Option<&'b str>,
+    },
+    CppHeader {
         inline_comment_format: Option<&'b str>,
         multiline_comment_start_format: Option<&'b str>,
         multiline_comment_end_format: Option<&'b str>,

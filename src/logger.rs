@@ -121,7 +121,17 @@ impl<'a> Logger {
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
+                Some("h") => Some(FileType::CHeader {
+                    inline_comment_format: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
                 Some(ext) if Self::CPP_FILE_EXTENSIONS.contains(&ext) => Some(FileType::Cpp {
+                    inline_comment_format: Some("//"),
+                    multiline_comment_start_format: Some("/*"),
+                    multiline_comment_end_format: Some("*/"),
+                }),
+                Some("hpp") => Some(FileType::CppHeader {
                     inline_comment_format: Some("//"),
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),

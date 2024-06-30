@@ -181,6 +181,11 @@ impl<'a> Logger {
                     multiline_comment_start_format: None,
                     multiline_comment_end_format: None,
                 }),
+                Some("vb") => Some(FileType::VB {
+                    inline_comment_format: Some("'"),
+                    multiline_comment_start_format: None,
+                    multiline_comment_end_format: None,
+                }),
                 _ => None,
             },
             None => match file.file_name()?.to_str() {
@@ -264,7 +269,13 @@ impl<'a> Logger {
                 }
             }
 
-            (Some(multi_left), Some(multi_right), None, false) => &line[multi_left..multi_right],
+            (Some(multi_left), Some(multi_right), None, false) => {
+                if multi_left < multi_right {
+                    &line[multi_left..multi_right]
+                } else {
+                    line
+                }
+            }
 
             (Some(_multi_left), Some(_multi_right), Some(_comment_start), false) => {
                 if self.verbose {

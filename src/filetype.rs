@@ -84,6 +84,11 @@ macro_rules! stringify_filetype {
                 multiline_comment_start_format: _,
                 multiline_comment_end_format: _,
             } => "Makefile",
+            FileType::Json {
+                inline_comment_format: _,
+                multiline_comment_start_format: _,
+                multiline_comment_end_format: _,
+            } => "JSON",
         }
     };
 }
@@ -208,6 +213,15 @@ macro_rules! destructure_filetype {
                 multiline_comment_start_format,
                 multiline_comment_end_format,
             ),
+            FileType::Json {
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            } => (
+                inline_comment_format,
+                multiline_comment_start_format,
+                multiline_comment_end_format,
+            ),
         }
     };
 }
@@ -277,6 +291,11 @@ pub enum FileType<'b> {
         multiline_comment_end_format: Option<&'b str>,
     },
     Makefile {
+        inline_comment_format: Option<&'b str>,
+        multiline_comment_start_format: Option<&'b str>,
+        multiline_comment_end_format: Option<&'b str>,
+    },
+    Json {
         inline_comment_format: Option<&'b str>,
         multiline_comment_start_format: Option<&'b str>,
         multiline_comment_end_format: Option<&'b str>,

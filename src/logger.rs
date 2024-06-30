@@ -176,6 +176,11 @@ impl<'a> Logger {
                     multiline_comment_start_format: Some("/*"),
                     multiline_comment_end_format: Some("*/"),
                 }),
+                Some("json") => Some(FileType::Json {
+                    inline_comment_format: None,
+                    multiline_comment_start_format: None,
+                    multiline_comment_end_format: None,
+                }),
                 _ => None,
             },
             None => match file.file_name()?.to_str() {
@@ -230,7 +235,7 @@ impl<'a> Logger {
             comment_position,
             *in_multiline_comment,
         ) {
-            (None, None, None, false) => return,
+            (None, None, None, false) => return, // Should be impossible
             (Some(_), Some(_), None, true) => line,
             (_, None, _, true) => line,
             (Some(_), Some(_), Some(_), true) => line,
@@ -262,11 +267,13 @@ impl<'a> Logger {
             (Some(multi_left), Some(multi_right), None, false) => &line[multi_left..multi_right],
 
             (Some(_multi_left), Some(_multi_right), Some(_comment_start), false) => {
-                eprintln!(
-                    "WARNING: 
+                if self.verbose {
+                    eprintln!(
+                        "WARNING: 
                           This is a complex comment and parsing it is not yet implemented: {:?}",
-                    line
-                );
+                        line
+                    );
+                }
                 line
             }
 
@@ -294,17 +301,21 @@ impl<'a> Logger {
     fn parse_file(&self, file_path: &Path) {
         // println!("Parsing File: {:?}", file);
 
-        let file = match File::open(file_path) {
-            Ok(f) => f,
-            Err(_) => return,
-        };
-
         let file_type = match Self::classify_file(file_path) {
             Some(t) => t,
             None => return,
         };
 
         self.increment_filetype_frequency(&file_type);
+
+        if let (None, None, None) = destructure_filetype!(file_type) {
+            return; // Count file but don't waste time parsing it's lines
+        }
+
+        let file = match File::open(file_path) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
 
         let file_reader: BufReader<File> = BufReader::new(file);
         let mut in_multiline_comment: bool = false;

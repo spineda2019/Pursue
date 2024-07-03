@@ -18,6 +18,7 @@
 
 mod filetype;
 mod logger;
+mod map;
 
 use std::path::{Path, PathBuf};
 

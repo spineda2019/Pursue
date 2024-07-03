@@ -9,13 +9,17 @@
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
- *  You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/> */
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program. If not, see <https://www.gnu.org/licenses/>
+ */
 
 use std::{
     collections::{HashMap, VecDeque},
     fs::File,
-    io::{BufRead, BufReader, ErrorKind},
+    io::ErrorKind,
     num::NonZero,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, RwLock},
@@ -23,6 +27,7 @@ use std::{
 };
 
 use crate::filetype::{destructure_filetype, stringify_filetype, FileType};
+use crate::map::Map;
 
 pub struct Logger {
     data: Arc<Mutex<VecDeque<PathBuf>>>,
@@ -328,20 +333,15 @@ impl<'a> Logger {
             Err(_) => return,
         };
 
-        let file_reader: BufReader<File> = BufReader::new(file);
         let mut in_multiline_comment: bool = false;
 
-        for line in file_reader.lines() {
-            self.process_line(
-                match &line {
-                    Ok(good_line) => good_line,
-                    Err(_) => "",
-                },
-                &file_type,
-                file_path,
-                &mut in_multiline_comment,
-            );
+        let map = match Map::new(file) {
+            Some(m) => m,
+            None => return,
+        };
 
+        for line in map {
+            self.process_line(&line, &file_type, file_path, &mut in_multiline_comment);
             {
                 *self.line_count.lock().unwrap() += 1;
             }

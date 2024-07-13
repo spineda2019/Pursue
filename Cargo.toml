@@ -7,3 +7,9 @@ authors = ["Sebastian Pineda"]
 [dependencies]
 argparse = "0.2.2"
 num_cpus = "1.16.0"
+
+[profile.release-optimized]
+inherits = "release"
+lto = true
+codegen-units = 1
+strip = true

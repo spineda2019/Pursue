@@ -1,8 +1,8 @@
 [package]
-name = "trace"
+name = "pursue"
 version = "0.0.1"
-edition = "2021"
 authors = ["Sebastian Pineda"]
+edition = "2024"
 
 [dependencies]
 argparse = "0.2.2"

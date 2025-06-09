@@ -3,6 +3,11 @@ name = "pursue"
 version = "0.0.1"
 authors = ["Sebastian Pineda"]
 edition = "2024"
+license = "GPL-2.0"
+description = "Find TODOs and friends in your repo FAST"
+homepage = "https://github.com/spineda2019/Pursue"
+repository = "https://github.com/spineda2019/Pursue"
+readme = "README.md"
 
 [dependencies]
 argparse = "0.2.2"
